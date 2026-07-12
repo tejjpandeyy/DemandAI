@@ -1,0 +1,33 @@
+# --- Secrets (most important line in this file) ---
+.env
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- ML artifacts (large binaries do not belong in git) ---
+backend/saved_models/*
+!backend/saved_models/.gitkeep
+backend/datasets/*
+!backend/datasets/.gitkeep
+*.joblib
+*.pkl
+
+# --- Node / React ---
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+
+# --- Notebooks (exploration only, not source of truth) ---
+*.ipynb_checkpoints/
