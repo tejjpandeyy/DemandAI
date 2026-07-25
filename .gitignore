@@ -19,6 +19,12 @@ backend/datasets/*
 *.joblib
 *.pkl
 
+# Exception: the single production model artifact IS tracked, so a fresh
+# clone can serve predictions and deploy without regenerating it. It is
+# ~6 MB, well within Git/GitHub limits. All other .joblib files (e.g.
+# baseline_model.joblib and any experimental artifacts) remain ignored.
+!backend/models/best_model.joblib
+
 # --- Node / React ---
 node_modules/
 frontend/dist/
@@ -31,3 +37,17 @@ frontend/.vite/
 
 # --- Notebooks (exploration only, not source of truth) ---
 *.ipynb_checkpoints/
+
+# --- Generated pipeline outputs (Phase 10 clarifications) ---
+backend/datasets/analytics/
+backend/datasets/features/
+backend/models/*.csv
+# Note: backend/models/best_model.joblib is explicitly tracked via the
+# exception in the ML-artifacts section above.
+
+# --- Build / test caches ---
+frontend/coverage/
+.vitest/
+
+# --- OS ---
+Thumbs.db

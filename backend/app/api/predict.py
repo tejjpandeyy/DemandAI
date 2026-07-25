@@ -12,10 +12,12 @@ backend is assembled (Phase 12/13), create_app() moves to app/main.py
 and this file keeps only the router.
 """
 
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.schemas.predict import (
     BatchPredictionRequest,
@@ -88,6 +90,24 @@ def create_app(model_path: Path | str = DEFAULT_MODEL_PATH) -> FastAPI:
         version="0.8.0",
         lifespan=lifespan,
     )
+
+    # Optional CORS for deployments where the frontend is hosted on a
+    # different origin than the API. Controlled entirely by the
+    # CORS_ALLOW_ORIGINS env var (comma-separated). When unset, no
+    # cross-origin access is granted -- local dev uses Vite's proxy and
+    # needs no CORS. This is additive and does not change any endpoint
+    # or response contract.
+    origins_env = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
+    if origins_env:
+        origins = [o.strip() for o in origins_env.split(",") if o.strip()]
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=False,
+            allow_methods=["GET", "POST"],
+            allow_headers=["*"],
+        )
+
     app.include_router(router)
     return app
 

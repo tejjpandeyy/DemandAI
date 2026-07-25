@@ -1,0 +1,27 @@
+# Render deployment blueprint for the DemandAI backend (FastAPI).
+#
+# This is a TEMPLATE. It has NOT been deployed. To use it:
+#   1. Move/copy this file to the repository root as `render.yaml`, OR
+#      point a Render Blueprint at deploy/render.yaml.
+#   2. Connect your GitHub repo in the Render dashboard.
+#   3. Set CORS_ALLOW_ORIGINS to your deployed frontend URL.
+#
+# Notes:
+#   - The trained model (backend/models/best_model.joblib) is tracked in
+#     Git via an explicit .gitignore exception (~6 MB), so it is present
+#     on clone and available to the service with no extra build step.
+#   - rootDir points the service at the backend/ folder.
+
+services:
+  - type: web
+    name: demandai-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.api.predict:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.10"
+      - key: CORS_ALLOW_ORIGINS
+        sync: false   # set in the Render dashboard to your frontend origin

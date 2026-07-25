@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "//": "TEMPLATE — not deployed. Copy to frontend/vercel.json to use. Set VITE_API_BASE_URL in the Vercel project settings to your deployed backend URL, e.g. https://demandai-api.onrender.com",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install"
+}
