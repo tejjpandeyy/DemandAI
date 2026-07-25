@@ -1,0 +1,9 @@
+# Generated model artifacts
+models/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
