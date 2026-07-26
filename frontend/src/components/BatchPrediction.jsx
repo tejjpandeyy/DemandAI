@@ -37,11 +37,11 @@ export default function BatchPrediction({ onResult }) {
     try {
       const data = await postBatchPrediction(requests);
       setRows(data.predictions ?? []);
-      onResult?.({
-        label: `Batch of ${data.count}`,
-        prediction: data.count,
-        status: "success",
-      });
+     onResult?.({
+  label: `Batch of ${data.count} predictions`,
+  prediction: null,
+  status: "success",
+});
     } catch (err) {
       setError(err.message);
       setRows([]);
