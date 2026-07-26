@@ -1,33 +1,122 @@
 # DemandAI — Retail Demand Forecasting
 
-DemandAI is an end-to-end machine learning system that forecasts daily product-level retail demand. It spans the full lifecycle: data preparation, leakage-safe feature engineering, chronological model comparison, a FastAPI prediction service, and a React dashboard.
+DemandAI is an end-to-end machine learning system for forecasting daily product-level retail demand.
+
+The project covers the complete ML lifecycle — from raw retail data preparation and leakage-safe feature engineering to model comparison, FastAPI-based inference, and an interactive React dashboard deployed on the web.
+
+## Live Demo
+
+DemandAI is deployed as a full-stack machine learning application.
+
+- **Frontend:** React + Vite deployed on Vercel
+- **Backend:** FastAPI deployed on Render
+- **ML Model:** HistGradientBoosting
+- **Prediction Modes:** Single prediction, Batch JSON, and CSV upload
+- **Monitoring:** Live API and model health status
+- **History:** Session-based prediction history
+
+### Production Architecture
+
+```text
+User
+  ↓
+Vercel
+React + Vite Frontend
+  ↓
+Render
+FastAPI Prediction API
+  ↓
+HistGradientBoosting Model
+  ↓
+Predicted Product Demand
+```
+
+> **Note:** The backend currently uses Render's free instance tier. The first API request after a period of inactivity may take longer while the service starts.
+
+---
 
 ## The Problem
 
-Retailers must estimate future product demand to avoid costly failures on both sides of the inventory equation:
+Retailers must estimate future product demand accurately to avoid costly inventory problems.
+
+Poor demand forecasting can lead to:
 
 - **Stockouts** — lost sales and unhappy customers when demand is underestimated.
-- **Overstock** — tied-up capital and waste (especially for perishable goods) when demand is overestimated.
-- **Inventory holding costs** — storage, insurance, and depreciation on excess stock.
-- **Inefficient replenishment** — reorder decisions made on gut feel rather than evidence.
+- **Overstock** — tied-up capital and waste when demand is overestimated.
+- **Inventory holding costs** — unnecessary storage, insurance, and depreciation.
+- **Inefficient replenishment** — inventory decisions based on intuition instead of data.
 
-DemandAI addresses this by learning demand patterns from historical sales and exposing per-product predictions through an API and dashboard, so replenishment decisions can be grounded in data.
+DemandAI addresses this problem by learning demand patterns from historical retail sales and exposing product-level predictions through a REST API and web dashboard.
+
+---
 
 ## Features
 
-- Reproducible data-preparation pipeline from the raw M5 competition files.
-- Safe preprocessing that never fabricates observations (gaps are detected and reported, not silently filled).
-- Leakage-safe feature engineering (lags, rolling statistics, calendar, event, and price features).
-- Chronological train/validation/test splitting appropriate for time series.
-- Comparison of three regression models with automatic winner selection on validation R².
-- FastAPI prediction service with single and batch endpoints and Pydantic validation.
-- React + Vite dashboard with live health status, single/batch prediction, and session history.
+- End-to-end retail demand forecasting pipeline
+- Reproducible data preparation from the M5 dataset
+- Safe preprocessing and validation
+- Leakage-safe time-series feature engineering
+- Lag and rolling demand features
+- Calendar, event, SNAP, and price features
+- Chronological train/validation/test splitting
+- Comparison of multiple regression models
+- Automatic model selection using validation R²
+- Saved production model using Joblib
+- FastAPI prediction service
+- Single prediction API
+- Batch prediction API
+- Pydantic request validation
+- React + Vite dashboard
+- Live backend/model health monitoring
+- Single-product prediction interface
+- Batch prediction using JSON
+- Batch prediction using CSV upload
+- Session-based prediction history
+- Automated backend and frontend tests
+- Production deployment using Vercel + Render
+
+---
 
 ## Tech Stack
 
-**Backend / ML:** Python, FastAPI, Pandas, NumPy, scikit-learn, XGBoost, Joblib, Pytest
-**Frontend:** React, Vite, React Router, Vitest, React Testing Library
-**Data:** M5 Forecasting – Accuracy (Walmart), subset: store `CA_1`, category `FOODS`, top 50 products
+### Machine Learning / Backend
+
+- Python
+- Pandas
+- NumPy
+- scikit-learn
+- XGBoost
+- Joblib
+- FastAPI
+- Pydantic
+- Uvicorn
+- Pytest
+
+### Frontend
+
+- React
+- Vite
+- React Router
+- Vitest
+- React Testing Library
+
+### Deployment
+
+- Vercel — frontend
+- Render — FastAPI backend
+- GitHub — source control and deployment integration
+
+### Dataset
+
+**M5 Forecasting – Accuracy**
+
+DemandAI currently uses:
+
+- Store: `CA_1`
+- Category: `FOODS`
+- Top 50 products
+
+---
 
 ## Project Architecture
 
@@ -40,196 +129,250 @@ flowchart TD
     E --> F[Chronological Train / Validation / Test Split]
     F --> G[Model Training]
     G --> H[Model Comparison]
-    H --> I[HistGradientBoosting selected]
-    I --> J[Saved Model best_model.joblib]
-    J --> K[FastAPI Service]
+    H --> I[HistGradientBoosting Selected]
+    I --> J[Saved Model - best_model.joblib]
+    J --> K[FastAPI Prediction Service]
     K --> L[REST API]
     L --> M[React Dashboard]
     M --> N[User Prediction]
 ```
 
-### Why chronological splitting (not random)?
+---
 
-For time-series forecasting, a random split leaks the future into the past: rows from later dates can land in the training set while earlier dates land in the test set, letting the model "peek" at outcomes it would never have at prediction time. That produces optimistic, dishonest metrics. DemandAI instead splits strictly by date — **train = oldest ~70%, validation = middle ~15%, test = newest ~15%** — so evaluation mimics the real task: fit on the past, predict the future. Split boundaries are computed on unique dates, so no calendar day appears in two splits.
+## Why Chronological Splitting?
+
+Traditional random train/test splitting is inappropriate for time-series forecasting because it can allow future observations to appear in the training data while earlier observations appear in the test data.
+
+This creates **data leakage** and produces overly optimistic model performance.
+
+DemandAI instead uses a chronological split:
+
+```text
+Oldest dates                     Newest dates
+     │                                │
+     ▼                                ▼
+┌──────────────┬────────────┬────────────┐
+│    Train     │ Validation │    Test    │
+│     ~70%     │    ~15%    │    ~15%   │
+└──────────────┴────────────┴────────────┘
+```
+
+The model therefore learns from the past and is evaluated on future observations.
+
+Split boundaries are computed using unique dates so the same calendar day cannot appear in multiple splits.
+
+---
 
 ## Dataset
 
-The system uses the [M5 Forecasting – Accuracy](https://www.kaggle.com/competitions/m5-forecasting-accuracy) dataset (real Walmart daily unit sales). A reproducible script subsets it to one store (`CA_1`), one category (`FOODS`), and the 50 top-selling products, then reshapes the wide daily format into a tidy long table with columns: `date, product_id, product_name, category, sales_quantity, price, snap_day, holiday, event_name, store_id`.
+DemandAI uses the **M5 Forecasting – Accuracy** dataset containing historical Walmart retail sales.
 
-The raw M5 files and all generated CSVs are **not committed** (see [Limitations](#limitations) and `.gitignore`); the preparation script regenerates them from the Kaggle download.
+The preparation pipeline selects:
 
-## ML Pipeline
+- One store: `CA_1`
+- One category: `FOODS`
+- 50 top-selling products
 
-1. **Preparation** — subset and reshape raw M5 files into the DemandAI schema.
-2. **Preprocessing** — validate, de-duplicate, forward-fill prices using past information only, detect date gaps, and flag (never delete) demand outliers.
-3. **EDA** — reusable analytics service producing trend, product, event, price, and day-of-week summaries.
-4. **Feature engineering** — leakage-safe lag/rolling/calendar/event/price features.
-5. **Training & comparison** — chronological split, three models, automatic selection.
-6. **Serving** — the saved model bundle is loaded once by the FastAPI service.
+The original wide M5 dataset is transformed into a tidy structure containing:
+
+```text
+date
+product_id
+product_name
+category
+sales_quantity
+price
+snap_day
+holiday
+event_name
+store_id
+```
+
+Raw M5 files and generated datasets are not committed to the repository. They can be regenerated using the included preparation scripts.
+
+---
+
+## Machine Learning Pipeline
+
+DemandAI follows six major ML stages.
+
+### 1. Data Preparation
+
+The raw M5 files are filtered and transformed into the DemandAI retail schema.
+
+### 2. Data Preprocessing
+
+The preprocessing pipeline:
+
+- validates required columns
+- detects invalid dates
+- handles duplicate observations
+- validates sales quantities
+- repairs prices using past information only
+- detects date gaps
+- flags demand outliers
+
+Missing observations are not silently converted into fake zero-sales records.
+
+### 3. Exploratory Data Analysis
+
+Reusable analytics components generate information about:
+
+- demand trends
+- products
+- events
+- prices
+- day-of-week behaviour
+- outliers
+
+### 4. Feature Engineering
+
+Time-series features are generated without using future target information.
+
+### 5. Model Training & Comparison
+
+Multiple regression models are trained using the same chronological split.
+
+The winning model is selected using **validation R²**.
+
+### 6. Model Serving
+
+The selected model bundle is saved and loaded by FastAPI for real-time inference.
+
+---
 
 ## Feature Engineering
 
-| Category | Examples | Notes |
+| Category | Examples | Description |
 |---|---|---|
-| **Lag** | `lag_1`, `lag_7`, `lag_14`, `lag_28` | Past sales via `groupby(product).shift(k)` — strictly earlier rows. |
-| **Rolling statistics** | `rolling_mean_7/14/28`, `rolling_std/min/max`, `rolling_median_7/28` | Computed on `sales.shift(1)` so today's value is never in the window. |
-| **Expanding** | `expanding_mean` | Mean of all strictly-previous days. |
-| **Calendar** | `year, month, quarter, week_of_year, day_of_month, day_of_week, day_of_year` | Deterministic functions of the date. |
-| **Weekend** | `is_weekend` | 1 on Saturday/Sunday. |
-| **SNAP** | `snap_day` | U.S. food-assistance disbursement day — a real demand driver for FOODS. Kept distinct from marketing promotions. |
-| **Holiday / event** | `holiday`, `has_named_event` | Binary flags; the raw event identity is preserved upstream for analysis. |
-| **Price** | `price_change`, `price_pct_change`, `rolling_price_mean_7`, `rolling_price_std_7` | Past-only; captures real markdowns without a fabricated discount column. |
+| **Lag** | `lag_1`, `lag_7`, `lag_14`, `lag_28` | Historical product sales from earlier dates |
+| **Rolling Statistics** | `rolling_mean_7`, `rolling_mean_14`, `rolling_mean_28` | Past-window demand statistics |
+| **Rolling Variation** | rolling std/min/max/median | Captures demand volatility |
+| **Expanding** | `expanding_mean` | Mean of all previous observations |
+| **Calendar** | year, month, quarter, week, day | Calendar-based demand patterns |
+| **Weekend** | `is_weekend` | Identifies Saturday/Sunday |
+| **SNAP** | `snap_day` | Food-assistance disbursement indicator |
+| **Holiday/Event** | `holiday`, `has_named_event` | Event-related demand effects |
+| **Price** | `price_change`, `price_pct_change` | Price movement information |
+| **Rolling Price** | rolling price mean/std | Historical price behaviour |
 
-### Data leakage prevention
+---
 
-Leakage is prevented at three points: (1) **splitting** is chronological, so the model never trains on dates after the ones it's evaluated on; (2) **rolling/expanding features** are computed on the target shifted by one day, so a given day's window ends at *t−1* and cannot contain the value being predicted; (3) **price repair** uses forward fill only (past information), never backward fill from the future. Warm-up rows where insufficient history exists are left as `NaN` rather than imputed. The winning model (HistGradientBoosting) ingests `NaN` natively.
+## Data Leakage Prevention
+
+Preventing future information from leaking into training is a major design goal of DemandAI.
+
+Leakage is prevented in several ways:
+
+### Chronological splitting
+
+The model trains only on dates occurring before validation and test dates.
+
+### Shifted rolling features
+
+Rolling and expanding target features operate on historical values only.
+
+For example, a rolling feature for day `t` uses information ending at:
+
+```text
+t - 1
+```
+
+rather than including the target value for day `t`.
+
+### Past-only price repair
+
+Missing/invalid prices are forward-filled using previously observed prices.
+
+Future prices are never copied backward.
+
+### Warm-up observations
+
+Rows without enough historical information remain `NaN` instead of being artificially filled.
+
+HistGradientBoosting can handle these missing values natively.
+
+---
 
 ## Model Comparison
 
-Three regression models were trained on the identical chronological split. **Only validation R² was used to pick the winner; the test set was held out and never consulted during selection.**
+Three regression approaches were evaluated using the same chronological split.
 
 | Model | Validation R² | Test R² |
-|---|---|---|
+|---|---:|---:|
 | XGBoost (tuned) | 0.7232 | 0.6764 |
 | RandomForest | 0.7251 | 0.6844 |
 | **HistGradientBoosting** | **0.7294** | **0.7041** |
 
+Only **validation R²** was used to select the winning model.
+
+The test set remained untouched during model selection.
+
+---
+
 ## Final Model
 
-**HistGradientBoosting** was selected on validation R² and, encouragingly, also generalized best to the untouched test set.
+The selected production model is:
 
-| Metric | Test-set value |
-|---|---|
-| R² | 0.7041 |
-| MAE | 4.9338 |
-| RMSE | 7.6485 |
+### HistGradientBoosting
 
-Interpretation: on held-out future data the model explains roughly 70% of demand variance, with predictions off by about 4.9 units on average. This is a solid, honest baseline for a single-store FOODS subset — not a state-of-the-art competition result, and not tuned to the test set.
+Final performance on the held-out test period:
+
+| Metric | Test Value |
+|---|---:|
+| **R²** | **0.7041** |
+| **MAE** | **4.9338** |
+| **RMSE** | **7.6485** |
+
+The model explains approximately **70% of demand variance** on the held-out future data.
+
+Its average absolute prediction error is approximately **4.9 units**.
+
+These results represent an honest baseline for the selected single-store FOODS subset rather than a state-of-the-art M5 competition result.
+
+---
 
 ## Backend API
 
-FastAPI service loading the model bundle exactly once at startup. Interactive OpenAPI docs are available at `/docs` (Swagger UI) and `/redoc` when the server is running. See [API Endpoints](#api-endpoints) and [`docs/API.md`](docs/API.md).
+DemandAI exposes the trained model through a FastAPI service.
 
-## Frontend Dashboard
+The model bundle is loaded once when the service starts and reused across prediction requests.
 
-React + Vite single-page app: live API/model health (auto-refreshing every 30s), a validated single-prediction form, batch prediction via JSON or CSV upload, and session-only prediction history. The backend URL is configurable via `VITE_API_BASE_URL`.
+FastAPI also provides interactive API documentation:
 
-## Project Structure
-
-```
-demandai/
-├── backend/
-│   ├── app/
-│   │   ├── api/           # FastAPI routers + app factory
-│   │   ├── schemas/       # Pydantic request/response models
-│   │   └── services/      # analytics + prediction service
-│   ├── ml/                # preprocessing, features, training, comparison
-│   ├── scripts/           # CLI runners for each pipeline stage
-│   ├── tests/             # Pytest suites
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── components/     # reusable UI + feature components
-│   │   ├── hooks/          # useHealth, useHistory
-│   │   ├── pages/          # Dashboard, Single, Batch, History
-│   │   ├── services/       # api.js (single backend seam)
-│   │   └── utils/          # pure helpers
-│   ├── package.json
-│   └── vite.config.js
-├── docs/                   # API and ML methodology docs
-├── deploy/                 # deployment configuration templates
-├── README.md
-└── .gitignore
+```text
+/docs
+/redoc
 ```
 
-## Installation
-
-**Prerequisites:** Python 3.11 or 3.12 (NumPy 1.26 ships no wheels for newer versions), Node.js 18+.
-
-```bash
-git clone <your-repo-url>
-cd demandai
-```
-
-## Backend Setup
-
-```bash
-cd backend
-python -m venv venv
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-pip install -r requirements.txt
-python verify_setup.py
-```
-
-> **Windows PowerShell note.** If PowerShell's execution policy blocks
-> `venv\Scripts\activate` (or `npm.ps1`), you don't need to change any
-> security setting. Either use the Command Prompt (`cmd.exe`) to activate,
-> or skip activation entirely and call the venv's Python directly, e.g.
-> `venv\Scripts\python.exe -m pip install -r requirements.txt` and
-> `venv\Scripts\python.exe verify_setup.py`.
-
-To reproduce the model from raw data, download the M5 dataset into `backend/datasets/raw/` (see `scripts/prepare_m5_subset.py`) and run the pipeline scripts in order: `prepare_m5_subset → run_preprocessing → run_feature_engineering → run_training → run_model_comparison`.
-
-## Frontend Setup
-
-```bash
-cd frontend
-npm install
-cp .env.example .env    # optional: override VITE_API_BASE_URL
-```
-
-## Running Locally
-
-Start the backend (from `backend/`, venv active):
-
-```bash
-uvicorn app.api.predict:app --reload
-```
-
-> **Windows PowerShell note.** If activation is blocked, run uvicorn
-> through the venv's Python without activating:
-> `venv\Scripts\python.exe -m uvicorn app.api.predict:app --reload`
-
-Start the frontend (from `frontend/`, in a second terminal):
-
-```bash
-npm run dev
-```
-
-Open the dashboard at `http://localhost:5173`. In development, Vite proxies `/api` to `http://127.0.0.1:8000`, so no CORS configuration is needed locally.
-
-## Running Tests
-
-```bash
-# Backend
-cd backend
-pytest -v
-
-# Frontend
-cd frontend
-npm test
-
-# Frontend production build
-npm run build
-```
+---
 
 ## API Endpoints
 
-| Method | Path | Purpose |
+| Method | Endpoint | Purpose |
 |---|---|---|
-| GET | `/` | Service metadata. |
-| GET | `/health` | Health + whether the model is loaded. |
-| POST | `/predict` | Single prediction. |
-| POST | `/predict/batch` | Batch of predictions. |
+| GET | `/` | Service information |
+| GET | `/health` | API and model health |
+| POST | `/predict` | Single demand prediction |
+| POST | `/predict/batch` | Batch demand predictions |
 
-Full request/response schemas and examples: [`docs/API.md`](docs/API.md).
+Detailed API documentation is available in:
 
-## Example Prediction
+```text
+docs/API.md
+```
 
-Request to `POST /predict`:
+---
+
+## Example Prediction Request
+
+Request to:
+
+```text
+POST /predict
+```
+
+Example:
 
 ```json
 {
@@ -240,14 +383,23 @@ Request to `POST /predict`:
   "holiday": 0,
   "has_named_event": 0,
   "features": [
-    { "name": "lag_1", "value": 12.0 },
-    { "name": "lag_7", "value": 9.0 },
-    { "name": "rolling_mean_7", "value": 10.5 }
+    {
+      "name": "lag_1",
+      "value": 12.0
+    },
+    {
+      "name": "lag_7",
+      "value": 9.0
+    },
+    {
+      "name": "rolling_mean_7",
+      "value": 10.5
+    }
   ]
 }
 ```
 
-Response:
+Example response:
 
 ```json
 {
@@ -259,27 +411,394 @@ Response:
 }
 ```
 
-(The `10.75` value reflects a manually verified prediction from development; exact values depend on the supplied feature inputs.)
+Exact predictions depend on the supplied feature values.
 
-## Model Performance
+---
 
-Selected model (HistGradientBoosting), evaluated on the held-out newest ~15% of dates: **R² 0.7041, MAE 4.9338, RMSE 7.6485**. The Phase-6 baseline (a single model, no comparison) scored R² 0.6931 / MAE 4.9151 / RMSE 7.8407, so the comparison stage improved R² and RMSE on the test set.
+## Frontend Dashboard
+
+The DemandAI frontend is built using React and Vite.
+
+It provides four primary sections.
+
+### Dashboard
+
+Displays:
+
+- API health
+- model loading status
+- backend connectivity
+
+### Single Prediction
+
+Allows users to provide:
+
+- date
+- product ID
+- price
+- historical lag features
+- rolling features
+- SNAP/event indicators
+
+and receive an immediate demand prediction.
+
+### Batch Prediction
+
+Supports multiple predictions through:
+
+- JSON requests
+- CSV file upload
+
+Batch results are displayed in a table.
+
+### Prediction History
+
+Records prediction activity during the current browser session.
+
+History includes:
+
+- prediction time
+- product/date or batch information
+- predicted sales for single predictions
+- success/error status
+
+History is currently session-only and is not stored in a database.
+
+---
+
+## Project Structure
+
+```text
+demandai/
+│
+├── backend/
+│   ├── app/
+│   │   ├── api/             # FastAPI application and routes
+│   │   ├── schemas/         # Pydantic request/response schemas
+│   │   └── services/        # Prediction and analytics services
+│   │
+│   ├── ml/                  # ML pipeline
+│   ├── models/              # Saved production model
+│   ├── scripts/             # Pipeline scripts
+│   ├── tests/               # Backend tests
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # React components
+│   │   ├── hooks/           # Custom React hooks
+│   │   ├── pages/           # Application pages
+│   │   ├── services/        # API client
+│   │   └── utils/           # Utility functions
+│   │
+│   ├── package.json
+│   └── vite.config.js
+│
+├── docs/                    # API and ML documentation
+├── deploy/                  # Deployment configuration
+├── README.md
+└── .gitignore
+```
+
+---
+
+## Installation
+
+### Prerequisites
+
+Install:
+
+- Python 3.11 or 3.12
+- Node.js 18+
+- Git
+
+Clone the repository:
+
+```bash
+git clone https://github.com/tejjpandeyy/DemandAI.git
+cd DemandAI
+```
+
+---
+
+## Backend Setup
+
+Navigate to the backend:
+
+```bash
+cd backend
+```
+
+Create a virtual environment:
+
+```bash
+python -m venv venv
+```
+
+### Windows
+
+```bash
+venv\Scripts\activate
+```
+
+### macOS / Linux
+
+```bash
+source venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Verify the setup:
+
+```bash
+python verify_setup.py
+```
+
+---
+
+## Running the Backend
+
+From the `backend` directory:
+
+```bash
+uvicorn app.api.predict:app --reload
+```
+
+The API will normally run at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Health endpoint:
+
+```text
+http://127.0.0.1:8000/health
+```
+
+Swagger documentation:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## Frontend Setup
+
+Open another terminal:
+
+```bash
+cd frontend
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+The frontend normally runs at:
+
+```text
+http://localhost:5173
+```
+
+During local development, Vite proxies API requests to the local FastAPI backend.
+
+For production, the backend URL is configured through:
+
+```text
+VITE_API_BASE_URL
+```
+
+---
+
+## Running Tests
+
+DemandAI contains automated tests for both the ML/backend pipeline and frontend application.
+
+### Backend
+
+```bash
+cd backend
+pytest -v
+```
+
+Current verified result:
+
+```text
+102 passed
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm test
+```
+
+Current verified result:
+
+```text
+20 passed
+```
+
+### Production Frontend Build
+
+```bash
+npm run build
+```
+
+The current production build completes successfully.
+
+---
+
+## Deployment
+
+DemandAI uses separate frontend and backend deployments.
+
+### Frontend — Vercel
+
+The React/Vite application is deployed through Vercel and connected to the GitHub repository.
+
+Pushes to the production branch can trigger new frontend deployments.
+
+### Backend — Render
+
+The FastAPI backend is deployed as a Render Web Service.
+
+Render configuration:
+
+```text
+Root Directory:
+backend
+
+Build Command:
+pip install -r requirements.txt
+
+Start Command:
+uvicorn app.api.predict:app --host 0.0.0.0 --port $PORT
+```
+
+### Frontend → Backend Connection
+
+The deployed frontend uses:
+
+```text
+VITE_API_BASE_URL
+```
+
+to communicate with the public FastAPI service.
+
+Production request flow:
+
+```text
+Browser
+   ↓
+Vercel Frontend
+   ↓
+FastAPI on Render
+   ↓
+HistGradientBoosting
+   ↓
+Prediction Response
+   ↓
+React Dashboard
+```
+
+---
+
+## Testing Coverage
+
+Backend tests cover areas including:
+
+- data preprocessing
+- data validation
+- feature engineering
+- leakage prevention
+- chronological splitting
+- model training
+- model comparison
+- model artifact creation
+- API validation
+- single prediction
+- batch prediction
+- deterministic predictions
+- model loading behaviour
+
+Frontend tests cover:
+
+- input formatting and validation
+- API health state
+- prediction form behaviour
+- loading states
+- API errors
+- batch prediction
+- JSON validation
+- history rendering
+- history clearing
+
+Current automated test count:
+
+```text
+Backend:  102 passing
+Frontend:  20 passing
+----------------------
+Total:    122 passing
+```
+
+---
 
 ## Limitations
 
-- Trained on **historical M5 retail data** for a single store and the FOODS category; performance on other stores, categories, or real-world businesses will differ and should be re-validated.
-- Predictions depend heavily on **lag and rolling features**, which require recent sales history for the product; cold-start products (no history) are not well served.
-- This is a **demand-prediction** system, **not** a real-time inventory-optimization or automatic-replenishment system.
-- There is **no automated retraining pipeline**; the model is a static artifact trained on a fixed dataset.
-- The dashboard's prediction history is **session-only** (not persisted).
-- Being able to deploy the project does **not** imply production-scale reliability, monitoring, or SLAs.
+DemandAI currently has several important limitations:
+
+- The model is trained on historical M5 retail data rather than live business data.
+- The current dataset subset contains one store and the FOODS category.
+- Performance on other stores, categories, or real businesses requires re-validation.
+- Predictions rely heavily on lag and rolling features.
+- Cold-start products without sufficient historical sales are not well supported.
+- The model artifact is static and there is currently no automated retraining pipeline.
+- Prediction history is stored only for the browser session.
+- DemandAI predicts demand but does not automatically optimize inventory or place replenishment orders.
+- The current deployment should be considered a portfolio/demo deployment rather than a production system with enterprise SLAs and monitoring.
+
+---
 
 ## Future Improvements
 
-Automated retraining; model monitoring and drift detection; experiment tracking; multi-horizon and probabilistic forecasts; richer product/store features; database-backed prediction history; authentication; Docker; CI/CD; cloud deployment; and integration with an inventory-optimization layer. All of these are **future work**, not current functionality.
+Potential future development includes:
+
+- Automated model retraining
+- Model monitoring
+- Data and prediction drift detection
+- Experiment tracking
+- Multi-step demand forecasting
+- Probabilistic forecasting
+- Additional stores and product categories
+- Richer product/store features
+- Persistent prediction history
+- PostgreSQL integration
+- User authentication
+- Docker containerization
+- CI/CD pipeline
+- Cloud monitoring
+- Inventory optimization
+- Automated replenishment recommendations
+
+---
 
 ## Author
 
 **Tej Pandey**
 
-Built as an end-to-end ML Engineering portfolio project.
+Built as an end-to-end **Machine Learning Engineering portfolio project** demonstrating:
+
+**Data Engineering → Feature Engineering → Time-Series ML → Model Evaluation → FastAPI → React → Testing → Deployment**
