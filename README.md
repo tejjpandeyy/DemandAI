@@ -5,6 +5,11 @@ DemandAI is an end-to-end machine learning system for forecasting daily product-
 The project covers the complete ML lifecycle — from raw retail data preparation and leakage-safe feature engineering to model comparison, FastAPI-based inference, and an interactive React dashboard deployed on the web.
 
 ## Live Demo
+### 🚀 Try DemandAI Live
+
+**Live Application:** https://demand-ai-tawny.vercel.app/
+
+The deployed application connects the React frontend hosted on Vercel with the FastAPI prediction service hosted on Render.
 
 DemandAI is deployed as a full-stack machine learning application.
 
